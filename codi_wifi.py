@@ -112,12 +112,6 @@ async def main():
     )
 
     parser.add_argument(
-        "--send",
-        action="store_true",
-        help="Send Wi-Fi credentials to the camera"
-    )
-
-    parser.add_argument(
         "--select", action="store_true",
         help="List nearby CI2K devices and select one if multiple are found"
     )
@@ -146,11 +140,7 @@ async def main():
     print("Encrypted length:", len(encrypted))
     print("BLE packets:", len(packets))
 
-    if not args.send:
-        print("\nDry run only. No Bluetooth data was sent.")
-        print("Use --send to provision the camera.")
-        return
-
+    # Running the script now provisions the selected camera by default.
     print("\nScanning for CI2K...")
 
     # Without --select, this preserves the original, tested discovery path.
