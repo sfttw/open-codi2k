@@ -1,0 +1,37 @@
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*device_key*
+*.secrets
+*.pem
+*.key
+
+# Python / development
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Camera capture / recordings and diagnostics
+codi_recordings/
+recordings/
+captures/
+*.log
+*LOGDATA*
+*.h264
+*.h265
+*.mp4
+*.wav
+*.bin
+*.pcap
+*.pcapng
+
+# Third-party proprietary files and reverse-engineering outputs
+*.apk
+*.dex
+*.so
+*.zip
+jadx_full_source/
+sdk_analysis/
