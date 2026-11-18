@@ -21,7 +21,41 @@ This project documents a working, cloud-independent LAN connection and research 
 - FFmpeg and VLC for live video/audio playback
 - Access to your **own** camera's LAN IP, DID and device key
 
-## First run
+## First-time setup: provision Wi-Fi first
+
+**Important:** A factory-reset / unpaired Codi 2K is not reachable using the LAN client. The camera must first be provisioned with your Wi-Fi credentials using **Bluetooth Low Energy (BLE)**. The original Momentum app is discontinued, so the reverse-engineered setup path below replaces its Wi-Fi onboarding flow.
+
+### 1. Put the camera in pairing mode
+
+Power on the camera. The tested camera announced that it was **ready to be paired** and flashed its LED **red/blue**.
+
+### 2. Provision over Bluetooth
+
+Use a computer with working Bluetooth LE. The tested setup used **macOS with Python and Bleak**, because the Windows desktop did not have Bluetooth hardware.
+
+```bash
+python3 -m pip install bleak pycryptodomex
+```
+
+The working setup used a local `codi_wifi.py` script with:
+
+```bash
+python3 codi_wifi.py --send
+```
+
+The script prompted for the Wi-Fi SSID and password, then sent an AES-128-CBC-encrypted `MOIOT_WIFISET_REQ` over BLE to the camera. It located the camera as `CI2K`, using the BLE user-data service `0x181C` and characteristic `0x181D` for packet writes. The tested connection wrote **7 of 7 packets**; BLE notifications were unavailable on that macOS setup, but the Wi-Fi provisioning succeeded anyway.
+
+**Current limitation:** `codi_wifi.py` is **not yet included in this repository**. The command above documents the original successfully tested onboarding step; it cannot be run from a fresh clone until a reviewed, sanitized provisioning script is added. Track this as a project issue. Never paste a Wi-Fi password into a shell command, log, or GitHub issue.
+
+### 3. Confirm the camera joined your LAN
+
+Check your router's connected-device list for the newly joined camera. On the tested network it appeared as a **SHENZEN** device; names and addresses will differ across networks. Note the camera's new LAN IP address.
+
+The BLE Wi-Fi setup step and LAN authentication are **separate**. The LAN client also requires the camera's **device ID (DID)** and **device key**. These must be obtained for your own camera; a first-run setup/discovery tool for those values is not yet included here. Do not use another person's DID or key.
+
+### 4. Run the LAN manager
+
+Once the camera is online and you have its correct IP, DID, and device key, run on Windows (PowerShell):
 
 ```powershell
 python3 .\codi_all_in_one_v10.py live-av --host CAMERA_IP --did CI2K-YOUR_DEVICE_ID --device-key "YOUR_DEVICE_KEY"
@@ -29,7 +63,7 @@ python3 .\codi_all_in_one_v10.py live-av --host CAMERA_IP --did CI2K-YOUR_DEVICE
 
 Open VLC and listen to `udp://@:12345`. Press **q**, then Enter, in the script console to stop live capture.
 
-The command-line tool also supports `--help`. Some actions can delete or format SD card data: verify a command before running it.
+Run `python3 .\codi_all_in_one_v10.py --help` to explore other commands. Some actions can delete or format SD card data: verify a command before running it.
 
 ## Red motion-recording LED research
 
