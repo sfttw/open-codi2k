@@ -37,7 +37,13 @@ Use a computer with working Bluetooth LE. The tested setup used **macOS with Pyt
 python3 -m pip install bleak pycryptodomex
 ```
 
-The working setup used a local `codi_wifi.py` script with:
+This repository includes a reconstructed `codi_wifi.py` provisioning script. Start with a dry run (prompts for Wi-Fi credentials, but **does not transmit**):
+
+```bash
+python3 codi_wifi.py
+```
+
+To actually provision an unpaired camera in BLE pairing mode:
 
 ```bash
 python3 codi_wifi.py --send
@@ -45,7 +51,7 @@ python3 codi_wifi.py --send
 
 The script prompted for the Wi-Fi SSID and password, then sent an AES-128-CBC-encrypted `MOIOT_WIFISET_REQ` over BLE to the camera. It located the camera as `CI2K`, using the BLE user-data service `0x181C` and characteristic `0x181D` for packet writes. The tested connection wrote **7 of 7 packets**; BLE notifications were unavailable on that macOS setup, but the Wi-Fi provisioning succeeded anyway.
 
-**Current limitation:** `codi_wifi.py` is **not yet included in this repository**. The command above documents the original successfully tested onboarding step; it cannot be run from a fresh clone until a reviewed, sanitized provisioning script is added. Track this as a project issue. Never paste a Wi-Fi password into a shell command, log, or GitHub issue.
+**Validation status:** The earlier `codi_wifi.py` implementation successfully provisioned the test camera. The version newly committed here reconstructs its BLE framing and encryption from the original app and test findings but **has not yet been re-tested against a factory-reset device**. Do not assume success until your router shows the camera has joined. Never paste a Wi-Fi password into a shell command, log, or GitHub issue.
 
 ### 3. Confirm the camera joined your LAN
 
@@ -80,6 +86,7 @@ See the GitHub issues for the investigation. **Do not send speculative writes to
 
 ## Project layout
 
+- `codi_wifi.py` — first-time BLE Wi-Fi provisioning (reconstructed; requires device retest)
 - `codi_all_in_one_v10.py` — stable LAN interface
 - `codi_motion_light_readonly_probe.py` — read-only RPCs for LED/light/alarm investigation
 - `export_jadx_led_analysis.py` — APK Java source/call-site exporter for JADX CLI
