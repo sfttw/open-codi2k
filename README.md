@@ -36,32 +36,51 @@ Power on the camera. The tested camera announced that it was **ready to be paire
 Use a computer with working Bluetooth LE. The tested setup used **macOS with Python and Bleak**, because the Windows desktop did not have Bluetooth hardware.
 
 ```bash
-python3 -m pip install bleak pycryptodomex
+python3 -m pip install bleak cryptography
 ```
 
-This repository includes a reconstructed `codi_wifi.py` provisioning script. Start with a dry run (prompts for Wi-Fi credentials, but **does not transmit**):
+**Wi-Fi provisioning has been tested on macOS Catalina with Python 3.8.2.** The BLE setup script uses the `cryptography` package; the separate LAN manager requires `pycryptodomex`.
+
+With the camera flashing red/blue in pairing mode, run:
 
 ```bash
 python3 codi_wifi.py
 ```
 
-To actually provision an unpaired camera in BLE pairing mode:
+**The command above sends Wi-Fi credentials immediately; there is no `--send` flag or dry-run mode.** It prompts interactively for the Wi-Fi SSID and a hidden password, then sends an AES-128-CBC-encrypted `MOIOT_WIFISET_REQ` over BLE. The camera advertises as `CI2K`; the relevant service is `0x181C`, with write characteristic `0x181D`.
 
-```bash
-python3 codi_wifi.py --send
-```
+If more than one camera is advertising over BLE, use `python3 codi_wifi.py --select` to choose by BLE device address. Only the selected camera receives the provisioning packets.
 
-The script prompted for the Wi-Fi SSID and password, then sent an AES-128-CBC-encrypted `MOIOT_WIFISET_REQ` over BLE to the camera. It located the camera as `CI2K`, using the BLE user-data service `0x181C` and characteristic `0x181D` for packet writes. The tested connection wrote **7 of 7 packets**; BLE notifications were unavailable on that macOS setup, but the Wi-Fi provisioning succeeded anyway.
-
-**Validation status:** The earlier `codi_wifi.py` implementation successfully provisioned the test camera. The version newly committed here reconstructs its BLE framing and encryption from the original app and test findings but **has not yet been re-tested against a factory-reset device**. Do not assume success until your router shows the camera has joined. Never paste a Wi-Fi password into a shell command, log, or GitHub issue.
+On the tested Mac, all **7 of 7 packets** were successfully written. Enabling BLE notifications failed with a macOS CoreBluetooth error; the script deliberately continued sending and then waited 10 seconds for camera processing. **Successful BLE writes alone do not prove the camera joined Wi-Fi:** verify the new device in your router's LAN client list. Never paste a Wi-Fi password into a shell command, log, or GitHub issue.
 
 ### 3. Confirm the camera joined your LAN
 
 Check your router's connected-device list for the newly joined camera. On the tested network it appeared as a **SHENZEN** device; names and addresses will differ across networks. Note the camera's new LAN IP address.
 
-The BLE Wi-Fi setup step and LAN authentication are **separate**. The LAN client also requires the camera's **device ID (DID)** and **device key**. These must be obtained for your own camera; a first-run setup/discovery tool for those values is not yet included here. Do not use another person's DID or key.
+The BLE Wi-Fi setup step and LAN authentication are **separate**. The LAN client also requires the camera's **device ID (DID)** and **device key**, which are different for each device. No automatic LAN credential-discovery tool is currently provided.
 
-### 4. Run the LAN manager
+### 4. Retrieve your own DID and device key from the microSD startup log
+
+The tested Codi 2K firmware writes its identity and LAN authentication key to a **startup diagnostic log on the camera's microSD card**. This worked on two separate owned cameras.
+
+1. Insert a compatible, formatted microSD card and allow the camera to boot and run long enough to write its diagnostic files. If the card is newly formatted, check that log files were generated.
+2. Power off the camera, remove the microSD card, and mount it on your computer. Avoid removing the card while the camera is writing.
+3. Find the **`19700101_LOGDATA*.txt`** file (for example, `19700101_LOGDATA.txt`). The date `19700101` is a startup-clock placeholder before the camera has acquired the correct time; it does **not** mean the log is from 1970.
+4. Open that file locally and search for **`===[DID]:`** and **`===[KEY]:`**. On the tested cameras these lines were near the **beginning** of the startup log. A later section may repeat the same values as **`deviceid =`** and **`device_key =`**.
+5. Record the values securely, together with the IP address you found on the router. Do **not** commit them, paste them into public bug reports, or share the full diagnostic log publicly.
+
+Example **format only** (not real credentials):
+
+```text
+===[DID]:CI2K-YOUR_DEVICE_ID
+===[KEY]:YOUR_DEVICE_KEY
+```
+
+A second log named for the current date (for example, `YYYYMMDD_LOGDATA.txt`) may contain ongoing operating and network messages. **For the two tested cameras, the `19700101_LOGDATA` startup log is the file that disclosed both credentials; the current-date log was not needed.** If you don't see these fields, check other startup logs from the same camera and firmware; do not assume every firmware version uses identical filenames or logging.
+
+**Security warning:** The device key grants access to the camera's authenticated LAN protocol. Treat the log like a password and keep it off GitHub.
+
+### 5. Run the LAN manager
 
 Once the camera is online and you have its correct IP, DID, and device key, run on Windows (PowerShell), replacing the example values with **your own**:
 
@@ -71,7 +90,7 @@ python3 .\codi_all_in_one_v12.py live-av --host CAMERA_IP --did CI2K-YOUR_DEVICE
 
 Open VLC at `udp://@:12345`. Press **q**, then Enter, in the script console to stop live capture.
 
-### 5. Watch the livestream in a web browser (v12)
+### 6. Watch the livestream in a web browser (v12)
 
 ```powershell
 python3 .\codi_all_in_one_v12.py http-live --host CAMERA_IP --did CI2K-YOUR_DEVICE_ID --device-key "YOUR_DEVICE_KEY" --http-port 9080
@@ -87,7 +106,7 @@ New-NetFirewallRule -DisplayName "Codi 2K HTTP Livestream" -Direction Inbound -P
 
 The HTTP server has **no login or HTTPS**. Everyone who can reach that port can view the camera. Use it only on a trusted private network; do **not** expose the port to the internet or forward it on your router. The browser player uses HLS, so playback typically lags live activity by several seconds. Press Ctrl+C in the script console to stop the HTTP server and worker processes.
 
-### 6. Read and change night vision (v12)
+### 7. Read and change night vision (v12)
 
 Read the current setting without making changes:
 
@@ -122,7 +141,7 @@ See the GitHub issues for the investigation. **Do not send speculative writes to
 
 ## Project layout
 
-- `codi_wifi.py` — first-time BLE Wi-Fi provisioning (reconstructed; requires device retest)
+- `codi_wifi.py` — tested first-time BLE Wi-Fi provisioning; Python 3.8-compatible on macOS, with optional `--select` for multiple cameras
 - `codi_all_in_one_v10.py` — preserved stable baseline
 - `codi_all_in_one_v12.py` — current LAN manager with HTTP/HLS streaming, night vision and existing video/SD tools
 - `codi_motion_light_readonly_probe.py` — read-only RPCs for LED/light/alarm investigation
