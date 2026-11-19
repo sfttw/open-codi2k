@@ -110,6 +110,52 @@ New-NetFirewallRule -DisplayName "Codi 2K HTTP Livestream" -Direction Inbound -P
 
 The HTTP server has **no login or HTTPS**. Everyone who can reach that port can view the camera **and operate its Start/Stop controls**. Use it only on a trusted private network; do **not** expose the port to the internet or forward it on your router. The browser player uses HLS, with approximately 3 seconds of latency on the tested setup; actual delay may vary. Press Ctrl+C in the script console to stop the HTTP server and worker processes.
 
+### MicroSD storage and recording commands
+
+The examples below use **Windows PowerShell** and the current `codi_all_in_one_v17_web_controls.py` script. Replace `CAMERA_IP`, `CI2K-YOUR_DEVICE_ID`, and `YOUR_DEVICE_KEY` with the credentials for **your own camera**. Do not share the device key or commit it to Git.
+
+**Start the browser livestream** (the server starts first; click **Start Stream** on the page to begin capturing):
+
+```powershell
+python .\codi_all_in_one_v17_web_controls.py http-live --host CAMERA_IP --did CI2K-YOUR_DEVICE_ID --device-key "YOUR_DEVICE_KEY" --http-port 9080
+```
+
+Open **http://localhost:9080/livecam** on the host PC, or **http://HOST_PC_LAN_IP:9080/livecam** on another trusted LAN device. Click **Stop Stream** to stop capturing without shutting down the web server.
+
+**Probe the MicroSD card's storage status** (non-destructive):
+
+```powershell
+python .\codi_all_in_one_v17_web_controls.py status --host CAMERA_IP --did CI2K-YOUR_DEVICE_ID --device-key "YOUR_DEVICE_KEY"
+```
+
+This queries the camera's SD-card status and displays total, used, and free capacity when the camera returns the expected counters. Capacity units are interpreted as KiB by the script.
+
+**List recordings for a specific day** (non-destructive):
+
+```powershell
+python .\codi_all_in_one_v17_web_controls.py list --host CAMERA_IP --did CI2K-YOUR_DEVICE_ID --device-key "YOUR_DEVICE_KEY" --date 2026-11-19
+```
+
+Replace the example date with the desired date in `YYYY-MM-DD` format. If `--date` is omitted, the script uses the computer's current date. The list prints recording IDs and metadata, newest first, for **one history page** (up to 100 entries by default). To request a larger page, add `--page-size 200`; a full page may indicate more recordings exist.
+
+**Download a specific recording** using the ID reported by `list`:
+
+```powershell
+python .\codi_all_in_one_v17_web_controls.py download --host CAMERA_IP --did CI2K-YOUR_DEVICE_ID --device-key "YOUR_DEVICE_KEY" --date 2026-11-19 --file-id 123 --output-dir .\codi_recordings
+```
+
+Replace `123` with the real recording ID. The script saves it as `P123.mp4` in the chosen output directory.
+
+**Delete one recording** by its ID (**destructive**):
+
+```powershell
+python .\codi_all_in_one_v17_web_controls.py delete --host CAMERA_IP --did CI2K-YOUR_DEVICE_ID --device-key "YOUR_DEVICE_KEY" --file-id 123
+```
+
+**Warning:** Replace `123` with the exact ID from the listing, and double-check it before proceeding. The script prompts `Delete recording 123? [y/yes to confirm]:` and sends the deletion request only if you type `y` or `yes`. This is not a dry run; deletion may be irreversible. The response alone is not proof of deletion—run `list` again for the relevant date to verify.
+
+The `format` action erases the entire MicroSD card and is intentionally **not** included as a copy-and-paste example.
+
 ### 7. Read and change night vision (v17)
 
 Read the current setting without making changes:
