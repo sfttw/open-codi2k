@@ -7,13 +7,13 @@ This project documents a working, cloud-independent LAN connection and research 
 ## Current capabilities
 
 - Stream live 1080p camera video and microphone audio to FFmpeg / VLC (`live-av`)
-- **Browser livestream with audio over HTTP / HLS**, available to other computers on the local network (`http-live`, v17)
+- **Browser livestream with audio over HTTP / HLS**, including Start Stream / Stop Stream buttons and stream status, available to other computers on the local network (`http-live`, web-controls version)
 - **Night-vision mode control:** read the current setting or set On / Off / Auto, with readback verification (`nightvision`, v17)
 - Browse and retrieve MicroSD recordings; decode and recover supported recording data
 - Read-only diagnostic queries for camera light/LED/alarm configuration
 - Tools for examining the discontinued Android app with JADX
 
-**Current tested version:** `codi_all_in_one_v17.py` — LAN streaming with audio and browser HLS has been tested on two physical CI2K cameras. After correcting the camera frame clock to approximately **50/3 FPS**, browser latency remained near **3 seconds** during a one-minute hands-on test. The original `live-av` VLC path, night-vision controls, and microSD operations remain available. Historical versions are retained in Git history, not as extra scripts in the repository.
+**Current tested version:** `codi_all_in_one_v17_web_controls.py` — builds on v17 and adds browser-side Start Stream / Stop Stream controls, live/offline status and automatic HLS playback. The updated web controls were tested with a five-minute stream and multiple successful stop/start cycles; the camera was also tested beside the router and in its normal downstairs location. The underlying v17 LAN video/audio pipeline, night-vision controls and microSD tools are retained. Browser latency was approximately **3 seconds** in earlier v17 testing, but actual delay varies. Historical versions remain in Git history.
 
 ## Requirements
 
@@ -82,7 +82,7 @@ A second log named for the current date (for example, `YYYYMMDD_LOGDATA.txt`) ma
 
 ### 5. Run the LAN manager
 
-**For every camera, specify its own `--host`, `--did`, and `--device-key`.** The repository version of v17 intentionally uses nonfunctional placeholder IP/DID defaults instead of publishing a real camera's identity. Testing with two owned CI2K cameras showed that an incorrect DID was accepted for some LAN commands when the IP and key were correct; this does **not** prove the DID is ignored throughout the protocol. Use the correct DID from that camera's startup log.
+**For every camera, specify its own `--host`, `--did`, and `--device-key`.** The repository script intentionally uses nonfunctional placeholder IP/DID defaults instead of publishing a real camera's identity. Testing with two owned CI2K cameras showed that an incorrect DID was accepted for some LAN commands when the IP and key were correct; this does **not** prove the DID is ignored throughout the protocol. Use the correct DID from that camera's startup log.
 
 Once the camera is online and you have its correct IP, DID, and device key, run on Windows (PowerShell), replacing the example values with **your own**:
 
@@ -92,7 +92,7 @@ python3 .\codi_all_in_one_v17.py live-av --host CAMERA_IP --did CI2K-YOUR_DEVICE
 
 Open VLC at `udp://@:12345`. Press **q**, then Enter, in the script console to stop live capture.
 
-### 6. Watch the livestream in a web browser (v17)
+### 6. Watch and control the livestream in a web browser
 
 ```powershell
 python3 .\codi_all_in_one_v17.py http-live --host CAMERA_IP --did CI2K-YOUR_DEVICE_ID --device-key "YOUR_DEVICE_KEY" --http-port 9080
@@ -100,13 +100,15 @@ python3 .\codi_all_in_one_v17.py http-live --host CAMERA_IP --did CI2K-YOUR_DEVI
 
 On the host PC, visit **http://localhost:9080/livecam**. From another device on the same LAN, visit **http://HOST_PC_LAN_IP:9080/livecam** (use the Windows host computer's IP, **not** the camera's IP). The script displays reachable URLs when possible.
 
+The web page remains available when streaming is stopped. Click **Start Stream** to connect to the camera and begin playback, and **Stop Stream** to stop capture without shutting down the web server. The page reports startup, live, stopping and offline states. You can restart streaming without restarting Python.
+
 The server binds to `0.0.0.0` by default, so multiple LAN clients can connect. To restrict it to the host PC, add `--http-host 127.0.0.1`. If remote clients cannot connect, allow inbound TCP port `9080` on the Windows **Private** firewall profile. Run PowerShell as Administrator:
 
 ```powershell
 New-NetFirewallRule -DisplayName "Codi 2K HTTP Livestream" -Direction Inbound -Protocol TCP -LocalPort 9080 -Action Allow -Profile Private
 ```
 
-The HTTP server has **no login or HTTPS**. Everyone who can reach that port can view the camera. Use it only on a trusted private network; do **not** expose the port to the internet or forward it on your router. The v17 browser player uses HLS, with approximately 3 seconds of latency on the tested setup; actual delay may vary. Press Ctrl+C in the script console to stop the HTTP server and worker processes.
+The HTTP server has **no login or HTTPS**. Everyone who can reach that port can view the camera **and operate its Start/Stop controls**. Use it only on a trusted private network; do **not** expose the port to the internet or forward it on your router. The browser player uses HLS, with approximately 3 seconds of latency on the tested setup; actual delay may vary. Press Ctrl+C in the script console to stop the HTTP server and worker processes.
 
 ### 7. Read and change night vision (v17)
 
@@ -144,7 +146,7 @@ See the GitHub issues for the investigation. **Do not send speculative writes to
 ## Project layout
 
 - `codi_wifi.py` — tested first-time BLE Wi-Fi provisioning; Python 3.8-compatible on macOS, with optional `--select` for multiple cameras
-- `codi_all_in_one_v17.py` — current tested LAN manager with low-latency HTTP/HLS streaming, VLC mode, night vision and microSD tools
+- `codi_all_in_one_v17_web_controls.py` — current tested LAN manager with browser Start/Stop controls, low-latency HTTP/HLS streaming, VLC mode, night vision and microSD tools
 - `codi_motion_light_readonly_probe.py` — read-only RPCs for LED/light/alarm investigation
 - `export_jadx_led_analysis.py` — APK Java source/call-site exporter for JADX CLI
 - `docs/led-investigation.md` — working research notes
